@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>🍓 Juicy Merge — Farcaster Mini App</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+    color: #e7ecf0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100dvh;
+    padding: 0;
+  }
+  .wrap { width: min(500px, 96vw); position: relative; }
+  
+  .game-header {
+    width: 100%;
+    background: #1f2937;
+    border-bottom: 2px solid #374151;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  
+  .game-header h1 {
+    font-size: 20px;
+    margin: 0;
+  }
+  
+  .header-stats {
+    display: flex;
+    gap: 20px;
+  }
+  
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .stat-item label {
+    font-size: 11px;
+    color: #9ca3af;
+  }
+  
+  .stat-item .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fbbf24;
+  }
+  
+  .card { 
+    background: #1f2937; 
+    border: 1px solid #374151; 
+    border-radius: 14px; 
+    padding: 20px; 
+    box-shadow: 0 10px 30px rgba(0,0,0,.35); 
+  }
+  
+  .overlay { 
+    position: fixed; 
+    inset: 0; 
+    display: grid; 
+    place-items: center; 
+    background: rgba(0,0,0,.85); 
+    backdrop-filter: blur(4px); 
+    padding: 16px; 
+    z-index: 100; 
+  }
+  
+  .hidden { display: none !important; }
+  
+  h1 {
+    font-size: 28px;
+    font-weight: 900;
+    margin-bottom: 12px;
+    text-shadow: 0 2px 10px rgba(236,72,153,0.5);
+  }
+  
+  .muted {
+    color: #9ca3af;
+    font-size: 14px;
+    line-height: 1.4;
+    margin-bottom: 16px;
+  }
+  
+  .btn-primary {
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #ec4899, #8b5cf6);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-weight: 900;
+    font-size: 16px;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(236,72,153,0.4);
+    transition: all 0.2s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(236,72,153,0.5);
+  }
+  
+  .btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  #game-container {
+    background: #fff;
+    border: 3px solid #ec4899;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    max-width: 100%;
+    margin: 20px auto 0 auto;
+    touch-action: none;
+    overflow: hidden;
+  }
+  
+  .game-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px;
+    background: linear-gradient(135deg, #fce7f3, #ddd6fe);
+    padding: 8px;
+  }
+  
+  .cell {
+    aspect-ratio: 1;
+    background: #fff;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  
+  .cell:hover {
+    transform: scale(1.1);
+  }
+  
+  .cell.selected {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 3px #fbbf24;
+  }
+  
+  .cell.animating {
+    pointer-events: none;
+    opacity: 0.75;
+  }
+  
+  .instructions {
+    background: rgba(236,72,153,0.1);
+    border: 1px solid rgba(236,72,153,0.3);
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 15px;
+  }
+  
+  .instructions h3 {
+    color: #ec4899;
+    font-size: 16px;
+    margin-bottom: 10px;
+  }
+  
+  .instructions ul {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .instructions li {
+    color: #cbd5e1;
+    font-size: 14px;
+    margin-bottom: 8px;
+    padding-left: 20px;
+    position: relative;
+  }
+  
+  .instructions li:before {
+    content: "🍓";
+    position: absolute;
+    left: 0;
+  }
+  
+  #status {
+    margin-top: 15px;
+    font-size: 13px;
+    line-height: 1.5;
+    background: #111827;
+    border: 1px solid #374151;
+    border-radius: 10px;
+    padding: 12px;
+  }
+  
+  #status b { color: #cde7d8; }
+  #status .ok { color: #4ade80; }
+  #status .warn { color: #fbbf24; }
+  #status .err { color: #f87171; }
+  #status a { color: #86c6ff; text-decoration: none; }
+  
+  .game-over-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    z-index: 50;
+  }
+  
+  .game-over-overlay h2 {
+    font-size: 36px;
+    margin-bottom: 10px;
+  }
+  
+  .game-over-overlay p {
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+  
+  .progress-bar {
+    width: 100%;
+    height: 8px;
+    background: #374151;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ec4899, #8b5cf6);
+    transition: width 0.3s;
+  }
+  
+  @media (max-width: 720px) {
+    .game-header {
+      padding: 12px 15px;
+    }
+    .game-header h1 {
+      font-size: 18px;
+    }
+    .header-stats {
+      gap: 15px;
+    }
+    .stat-item .stat-value {
+      font-size: 16px;
+    }
+    .cell {
+      font-size: 20px;
+    }
+  }
+</style>
+</head>
+<body>
+  <div class="game-header">
+    <h1>🍓 Juicy Merge</h1>
+    <div class="header-stats">
+      <div class="stat-item">
+        <label>Score</label>
+        <span class="stat-value" id="scoreDisplay">0</span>
+      </div>
+      <div class="stat-item">
+        <label>Moves</label>
+        <span class="stat-value" id="movesDisplay">10</span>
+      </div>
+      <div class="stat-item">
+        <label>Level</label>
+        <span class="stat-value" id="levelDisplay">1</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div id="intro-overlay" class="overlay">
+      <div class="card" role="dialog" aria-modal="true">
+        <h1>🍓 Juicy Merge</h1>
+        <p class="muted">Match 3 or more fruits to score big!</p>
+
+        <div style="display: flex; justify-content: center; gap: 12px; margin-top: 20px;">
+          <button id="play" class="btn-primary">💰 Pay & Play</button>
+        </div>
+        
+        <div class="instructions">
+          <h3>How to Play:</h3>
+          <ul>
+            <li>Click two adjacent fruits to swap them</li>
+            <li>Match 3+ identical fruits to score points</li>
+            <li>Create combos for bonus points</li>
+            <li>Reach the target before moves run out</li>
+            <li>Complete levels to unlock harder challenges</li>
+          </ul>
+        </div>
+        
+        <div id="status" class="hidden"></div>
+      </div>
+    </div>
+
+    <div id="game-container">
+      <div style="padding: 12px; background: linear-gradient(135deg, #fce7f3, #ddd6fe);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 14px; font-weight: 600; color: #6b21a8;">Target: <span id="targetDisplay">500</span></span>
+          <span style="font-size: 12px; font-weight: 600; color: #9333ea;"><span id="remainingDisplay">500</span> to go</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+        </div>
+      </div>
+      <div class="game-grid" id="gameGrid"></div>
+      
+      <div id="game-over" class="game-over-overlay hidden">
+        <h2 id="gameOverTitle">Game Over</h2>
+        <p id="gameOverScore">Score: 0</p>
+        <button id="play-again" class="btn-primary">💰 Pay & Play Again</button>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+import { sdk } from 'https://esm.sh/@farcaster/miniapp-sdk';
+sdk.actions.ready();
+
+const USE_BASE_SEPOLIA = false;
+const RECIPIENT = "0x5DE6945201D6B551cdB6F88bE0335A989833c446";
+const AMOUNT_ETH = "0.00001";
+
+const BASE_MAINNET = { chainId: "0x2105",  explorer: "https://basescan.org/tx/" };
+const BASE_SEPOLIA = { chainId: "0x14a34", explorer: "https://sepolia.basescan.org/tx/" };
+const TARGET = USE_BASE_SEPOLIA ? BASE_SEPOLIA : BASE_MAINNET;
+
+const FRUITS = ['🍒', '🍓', '🍊', '🍋', '🍉', '🍇'];
+const GRID_SIZE = 8;
+const MOVES_START = 10;
+
+const statusEl = document.getElementById('status');
+const playBtn = document.getElementById('play');
+const playAgainBtn = document.getElementById('play-again');
+const scoreDisplay = document.getElementById('scoreDisplay');
+const movesDisplay = document.getElementById('movesDisplay');
+const levelDisplay = document.getElementById('levelDisplay');
+const targetDisplay = document.getElementById('targetDisplay');
+const remainingDisplay = document.getElementById('remainingDisplay');
+const progressBar = document.getElementById('progressBar');
+const gameGrid = document.getElementById('gameGrid');
+const gameOverEl = document.getElementById('game-over');
+const gameOverTitle = document.getElementById('gameOverTitle');
+const gameOverScore = document.getElementById('gameOverScore');
+
+const showStatus = () => statusEl.classList.remove('hidden');
+const addLine = html => { showStatus(); statusEl.insertAdjacentHTML('beforeend', `<div>${html}</div>`); };
+const clearStatus = () => statusEl.innerHTML = '';
+const disable = (el, yes=true) => { if (el) el.disabled = yes; };
+
+function parseEther(x) {
+  const [w, f=""] = String(x).split('.');
+  const frac = (f + '0'.repeat(18)).slice(0, 18);
+  return '0x' + (BigInt(w) * 10n**18n + BigInt(frac)).toString(16);
+}
+
+async function getProvider() {
+  try {
+    const p = await sdk.wallet.getEthereumProvider();
+    if (p) return p;
+  } catch {}
+  return window.ethereum ?? null;
+}
+
+async function ensureChain(provider, chainId) {
+  const current = (await provider.request({ method: 'eth_chainId' }))?.toLowerCase();
+  if (current === chainId.toLowerCase()) return;
+  try {
+    await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId }] });
+  } catch (e) {
+    if (e?.code === 4902) {
+      await provider.request({ method: 'wallet_addEthereumChain', params: [{ chainId }] });
+      await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId }] });
+    } else { throw e; }
+  }
+}
+
+async function requiredPayment() {
+  clearStatus();
+  addLine(`<b>Step 1:</b> Locating wallet provider…`);
+  const provider = await getProvider();
+  if (!provider) {
+    addLine(`<span class="err">No wallet available.</span> Open in Farcaster or enable a wallet.`);
+    throw new Error('NO_PROVIDER');
+  }
+  addLine(`<span class="ok">Provider ready.</span>`);
+
+  addLine(`<b>Step 2:</b> Requesting accounts…`);
+  const [from] = await provider.request({ method: 'eth_requestAccounts' });
+  addLine(`<span class="ok">Account: ${from.slice(0,6)}…${from.slice(-4)}</span>`);
+
+  addLine(`<b>Step 3:</b> Switching to Base${USE_BASE_SEPOLIA?' Sepolia':''}…`);
+  await ensureChain(provider, TARGET.chainId);
+  addLine(`<span class="ok">On Base${USE_BASE_SEPOLIA?' Sepolia':''}.</span>`);
+
+  addLine(`<b>Step 4:</b> Sending ${AMOUNT_ETH} ETH to ${RECIPIENT.slice(0,6)}…${RECIPIENT.slice(-4)}…`);
+  const hash = await provider.request({
+    method: 'eth_sendTransaction',
+    params: [{ from, to: RECIPIENT, value: parseEther(AMOUNT_ETH) }]
+  });
+  addLine(`<span class="ok">TX sent.</span> <a target="_blank" rel="noopener" href="${TARGET.explorer}${hash}">View on Basescan</a>`);
+  return hash;
+}
+
+async function payThen(action, triggerBtn) {
+  try {
+    disable(triggerBtn, true);
+    await requiredPayment();
+    await action();
+  } catch (e) {
+    console.warn('Payment gate blocked action:', e);
+    addLine(`<span class="warn">Payment required. Please try again.</span>`);
+  } finally {
+    disable(triggerBtn, false);
+  }
+}
+
+let gameState = {
+  grid: [],
+  selected: null,
+  score: 0,
+  moves: MOVES_START,
+  level: 1,
+  targetScore: 500,
+  gameStatus: 'playing',
+  animating: false
+};
+
+function createGrid() {
+  const newGrid = [];
+  for (let i = 0; i < GRID_SIZE; i++) {
+    const row = [];
+    for (let j = 0; j < GRID_SIZE; j++) {
+      let fruit;
+      let attempts = 0;
+      do {
+        fruit = FRUITS[Math.floor(Math.random() * FRUITS.length)];
+        attempts++;
+      } while (
+        attempts < 50 && (
+          (j >= 2 && row[j - 1] === fruit && row[j - 2] === fruit) ||
+          (i >= 2 && newGrid[i - 1][j] === fruit && newGrid[i - 2][j] === fruit)
+        )
+      );
+      row.push(fruit);
+    }
+    newGrid.push(row);
+  }
+  return newGrid;
+}
+
+function renderGrid() {
+  gameGrid.innerHTML = '';
+  gameState.grid.forEach((row, i) => {
+    row.forEach((fruit, j) => {
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      if (gameState.animating) cell.classList.add('animating');
+      if (gameState.selected && gameState.selected[0] === i && gameState.selected[1] === j) {
+        cell.classList.add('selected');
+      }
+      cell.textContent = fruit;
+      cell.onclick = () => handleCellClick(i, j);
+      gameGrid.appendChild(cell);
+    });
+  });
+}
+
+function updateUI() {
+  scoreDisplay.textContent = gameState.score;
+  movesDisplay.textContent = gameState.moves;
+  levelDisplay.textContent = gameState.level;
+  targetDisplay.textContent = gameState.targetScore;
+  const remaining = Math.max(0, gameState.targetScore - gameState.score);
+  remainingDisplay.textContent = remaining;
+  const progress = Math.min(100, (gameState.score / gameState.targetScore) * 100);
+  progressBar.style.width = progress + '%';
+}
+
+function checkMatches(currentGrid) {
+  const matchSet = new Set();
+  const matches = [];
+  
+  for (let i = 0; i < GRID_SIZE; i++) {
+    let count = 1;
+    for (let j = 1; j < GRID_SIZE; j++) {
+      if (currentGrid[i][j] && currentGrid[i][j] === currentGrid[i][j - 1]) {
+        count++;
+      } else {
+        if (count >= 3) {
+          const match = [];
+          for (let k = j - count; k < j; k++) {
+            const key = `${i}-${k}`;
+            if (!matchSet.has(key)) {
+              matchSet.add(key);
+              match.push([i, k]);
+            }
+          }
+          if (match.length >= 3) matches.push(match);
+        }
+        count = 1;
+      }
+    }
+    if (count >= 3) {
+      const match = [];
+      for (let k = GRID_SIZE - count; k < GRID_SIZE; k++) {
+        const key = `${i}-${k}`;
+        if (!matchSet.has(key)) {
+          matchSet.add(key);
+          match.push([i, k]);
+        }
+      }
+      if (match.length >= 3) matches.push(match);
+    }
+  }
+  
+  for (let j = 0; j < GRID_SIZE; j++) {
+    let count = 1;
+    for (let i = 1; i < GRID_SIZE; i++) {
+      if (currentGrid[i][j] && currentGrid[i][j] === currentGrid[i - 1][j]) {
+        count++;
+      } else {
+        if (count >= 3) {
+          const match = [];
+          for (let k = i - count; k < i; k++) {
+            const key = `${k}-${j}`;
+            if (!matchSet.has(key)) {
+              matchSet.add(key);
+              match.push([k, j]);
+            }
+          }
+          if (match.length >= 3) matches.push(match);
+        }
+        count = 1;
+      }
+    }
+    if (count >= 3) {
+      const match = [];
+      for (let k = GRID_SIZE - count; k < GRID_SIZE; k++) {
+        const key = `${k}-${j}`;
+        if (!matchSet.has(key)) {
+          matchSet.add(key);
+          match.push([k, j]);
+        }
+      }
+      if (match.length >= 3) matches.push(match);
+    }
+  }
+  
+  return matches;
+}
+
+function removeMatches(currentGrid, matches) {
+  const newGrid = currentGrid.map(row => [...row]);
+  let totalRemoved = 0;
+  
+  matches.forEach(match => {
+    match.forEach(([i, j]) => {
+      if (newGrid[i][j] !== null) {
+        newGrid[i][j] = null;
+        totalRemoved++;
+      }
+    });
+  });
+  
+  return { newGrid, totalRemoved };
+}
+
+function dropFruits(currentGrid) {
+  const newGrid = currentGrid.map(row => [...row]);
+  
+  for (let j = 0; j < GRID_SIZE; j++) {
+    const column = [];
+    for (let i = GRID_SIZE - 1; i >= 0; i--) {
+      if (newGrid[i][j] !== null) {
+        column.push(newGrid[i][j]);
+      }
+    }
+    
+    while (column.length < GRID_SIZE) {
+      column.push(FRUITS[Math.floor(Math.random() * FRUITS.length)]);
+    }
+    
+    for (let i = 0; i < GRID_SIZE; i++) {
+      newGrid[GRID_SIZE - 1 - i][j] = column[i];
+    }
+  }
+  
+  return newGrid;
+}
+
+async function processMatches(currentGrid) {
+  gameState.animating = true;
+  let newGrid = currentGrid.map(row => [...row]);
+  let totalPoints = 0;
+  let comboMultiplier = 1;
+  
+  while (true) {
+    const matches = checkMatches(newGrid);
+    
+    if (matches.length === 0) {
+      break;
+    }
+    
+    const { newGrid: gridAfterRemoval, totalRemoved } = removeMatches(newGrid, matches);
+    totalPoints += totalRemoved * 10 * comboMultiplier;
+    comboMultiplier++;
+    
+    gameState.grid = gridAfterRemoval;
+    renderGrid();
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    newGrid = dropFruits(gridAfterRemoval);
+    gameState.grid = newGrid;
+    renderGrid();
+    await new Promise(resolve => setTimeout(resolve, 400));
+  }
+  
+  if (totalPoints > 0) {
+    gameState.score += totalPoints;
+    updateUI();
+  }
+  
+  gameState.animating = false;
+  renderGrid();
+  
+  if (gameState.moves === 0) {
+    endGame();
+  }
+}
+
+async function swapFruits(pos1, pos2) {
+  if (gameState.animating || gameState.gameStatus !== 'playing') return;
+  
+  gameState.moves--;
+  updateUI();
+  
+  const newGrid = gameState.grid.map(row => [...row]);
+  const temp = newGrid[pos1[0]][pos1[1]];
+  newGrid[pos1[0]][pos1[1]] = newGrid[pos2[0]][pos2[1]];
+  newGrid[pos2[0]][pos2[1]] = temp;
+  
+  gameState.grid = newGrid;
+  renderGrid();
+  await new Promise(resolve => setTimeout(resolve, 200));
+  
+  const matches = checkMatches(newGrid);
+  
+  if (matches.length > 0) {
+    await processMatches(newGrid);
+  } else {
+    const revertGrid = newGrid.map(row => [...row]);
+    const temp2 = revertGrid[pos1[0]][pos1[1]];
+    revertGrid[pos1[0]][pos1[1]] = revertGrid[pos2[0]][pos2[1]];
+    revertGrid[pos2[0]][pos2[1]] = temp2;
+    gameState.grid = revertGrid;
+    renderGrid();
+  }
+  
+  gameState.selected = null;
+  renderGrid();
+}
+
+function handleCellClick(row, col) {
+  if (gameState.animating || gameState.gameStatus !== 'playing') return;
+  
+  if (gameState.selected === null) {
+    gameState.selected = [row, col];
+    renderGrid();
+  } else {
+    const [selRow, selCol] = gameState.selected;
+    
+    if (selRow === row && selCol === col) {
+      gameState.selected = null;
+      renderGrid();
+      return;
+    }
+    
+    const isAdjacent = 
+      (Math.abs(row - selRow) === 1 && col === selCol) ||
+      (Math.abs(col - selCol) === 1 && row === selRow);
+    
+    if (isAdjacent) {
+      swapFruits(gameState.selected, [row, col]);
+    } else {
+      gameState.selected = [row, col];
+      renderGrid();
+    }
+  }
+}
+
+function endGame() {
+  gameState.gameStatus = gameState.score >= gameState.targetScore ? 'won' : 'lost';
+  
+  if (gameState.gameStatus === 'won') {
+    gameOverTitle.textContent = '🎉 Level Complete!';
+    gameOverScore.textContent = `Score: ${gameState.score}/${gameState.targetScore}`;
+    playAgainBtn.textContent = '💰 Pay & Next Level';
+  } else {
+    gameOverTitle.textContent = 'Game Over';
+    gameOverScore.textContent = `Score: ${gameState.score}/${gameState.targetScore}`;
+    playAgainBtn.textContent = '💰 Pay & Try Again';
+  }
+  
+  gameOverEl.classList.remove('hidden');
+}
+
+function startGame() {
+  document.getElementById('intro-overlay').classList.add('hidden');
+  gameOverEl.classList.add('hidden');
+  
+  if (gameState.gameStatus === 'won') {
+    gameState.level++;
+    gameState.targetScore = Math.floor(gameState.targetScore * 1.5);
+    gameState.score = 0;
+  } else {
+    gameState.score = 0;
+    gameState.level = 1;
+    gameState.targetScore = 500;
+  }
+  
+  gameState.moves = MOVES_START;
+  gameState.gameStatus = 'playing';
+  gameState.selected = null;
+  gameState.animating = false;
+  gameState.grid = createGrid();
+  
+  updateUI();
+  renderGrid();
+}
+
+playBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  payThen(startGame, playBtn);
+});
+
+playAgainBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  payThen(startGame, playAgainBtn);
+});
+
+window.addEventListener('error', e => console.error('Error:', e.error || e));
+window.addEventListener('unhandledrejection', e => console.error('Unhandled promise:', e.reason));
+</script>
+</body>
+</html>
